@@ -8,7 +8,7 @@
 #endif
 
 #ifdef HX_DEBUG
-	#define hxAssert(condition, ...) do { if(!condition) { HX_BREAKPOINT(); } } while(0)
+	#define hxAssert(condition, ...) do { if(!(condition)) { HX_BREAKPOINT(); } } while(0)
 #else
 	#define hxAssert(condition, ...) ((void)0)
 #endif

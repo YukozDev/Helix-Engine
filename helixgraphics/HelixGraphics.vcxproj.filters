@@ -44,5 +44,8 @@
     <ClCompile Include="src\HelixGraphics\Shader\ElementBufferObject.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\HelixGraphics\Shader\IShader.h">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

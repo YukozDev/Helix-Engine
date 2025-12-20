@@ -19,3 +19,5 @@ using hxChar = char;
 
 template<size_t Size>
 using StaticString = char[Size]; // TODO: MEMORY
+
+#define hxNoDiscard [[nodiscard]]

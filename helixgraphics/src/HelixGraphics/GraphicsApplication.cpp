@@ -3,11 +3,23 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <HelixCore/CoreEngine.h>
+#include <HelixCore/File/FileBinStream.h>
+#include <HelixCore/Logger/LogCategory.h>
+#include <HelixCore/Logger/LogHandler.h>
 #include <malloc.h>
 #include <iostream>
 
 GLuint CreateShader(GLenum type, const char* source);
 GLuint CreateProgram(GLuint vertexShader, GLuint fragmentShader);
+
+// TODO: LOG
+void APIENTRY GLDebugMessageCallback(GLenum source,
+	GLenum type,
+	GLuint id,
+	GLenum severity,
+	GLsizei length,
+	const GLchar* message,
+	const void* userParam);
 
 hxInt32 main(hxInt32 argc, hxChar** argv)
 {
@@ -23,6 +35,13 @@ hxInt32 main(hxInt32 argc, hxChar** argv)
 
 	GLFWwindow* window = glfwCreateWindow(800, 800, "Helix Graphics", nullptr, nullptr);
 
+	#define LogGraphic LogCategory("GraphicsLog")
+
+	hxLogDebug(LogGraphic, "Test");
+
+	//LogCategory cat = LogCategory("GraphicLog");
+
+
 	if (window == nullptr)
 	{
 		hxAssert(false, "Window failed to create");
@@ -36,6 +55,12 @@ hxInt32 main(hxInt32 argc, hxChar** argv)
 	{
 		hxAssert(false, "Failed to initialize GLAD");
 	}
+
+	// Create OpenGL Context Debug
+	glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_TRUE);
+	glEnable(GL_DEBUG_OUTPUT);
+	glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+	glDebugMessageCallback(GLDebugMessageCallback, nullptr);
 
 	// Triangle setup
 	GLuint VAO;
@@ -74,32 +99,28 @@ hxInt32 main(hxInt32 argc, hxChar** argv)
 	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), 0);
 	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), (void*)(2 * sizeof(GLfloat)));
 
-	const char* vertexShaderSource = R"(
-		#version 460 core
+	FileBinStream* vertexFile = new FileBinStream("ressource/Shader/VertexShader.shader", false, FileAccess::Read);
+	size_t vertexSize = vertexFile->Size();
 
-		layout(location = 0) in vec2 position;
-		layout(location = 1) in vec3 color;
+	hxChar* vertexShaderSource = (char*)alloca(vertexSize + 1);
+	vertexFile->Read(vertexShaderSource, vertexSize);
+	vertexShaderSource[vertexSize] = '\0';
 
-		out vec3 fragColor;
+	FileBinStream* fragmentFile = new FileBinStream("ressource/Shader/FragmentShader.shader", false, FileAccess::Read);
+	size_t fragmentSize = fragmentFile->Size();
 
-		void main()
-		{
-			gl_Position = vec4(position, 0.0, 1.0);
-			fragColor = color;
-		}
-	)";
+	hxChar* fragmentShaderSource = (char*)alloca(fragmentSize + 1);
 
-	const char* fragmentShaderSource = R"(
-		#version 460 core
+	size_t test = sizeof(fragmentShaderSource);
 
-		in vec3 fragColor;
-		out vec4 finalColor;
-   
-		void main()
-		{
-			finalColor = vec4(fragColor, 1.0);
-		}
-	)";
+	fragmentFile->Read(fragmentShaderSource, fragmentSize);
+	fragmentShaderSource[fragmentSize] = '\0';
+
+	delete vertexFile;
+	delete fragmentFile;
+
+	std::cout << vertexShaderSource << "\n";
+	std::cout << fragmentShaderSource << "\n";
 
 	GLuint vertexShaderId = CreateShader(GL_VERTEX_SHADER, vertexShaderSource);
 	GLuint fragmentShaderId = CreateShader(GL_FRAGMENT_SHADER, fragmentShaderSource);
@@ -107,12 +128,18 @@ hxInt32 main(hxInt32 argc, hxChar** argv)
 	GLuint programShader = CreateProgram(vertexShaderId, fragmentShaderId);
 	glUseProgram(programShader);
 
+	//Uniforme
+	GLint colorLocation = glGetUniformLocation(programShader, "u_Color");
+	hxAssert(colorLocation != -1);
+
 	// Main loop
 	while (!glfwWindowShouldClose(window))
 	{
 		glClearColor(0.21, 0.26, 0.40, 1.0);
 
 		glClear(GL_COLOR_BUFFER_BIT);
+
+		glUniform4f(colorLocation, 1.0f, 0.0f, 0.0f, 1.0);
 
 		glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0);
 
@@ -144,11 +171,8 @@ GLuint CreateShader(GLenum type, const char* source)
 		GLchar message = (GLchar)alloca(msgLenght);
 		glGetShaderInfoLog(shaderId, msgLenght, 0, &message);
 
-		// TODO: LOG
-		std::cout << message << "\n";
-
 		glDeleteShader(shaderId);
-		hxAssert(false, message);
+		hxAssert(false);
 	}
 
 	return shaderId;
@@ -169,16 +193,23 @@ GLuint CreateProgram(GLuint vertexShader, GLuint fragmentShader)
 		GLsizei log_length = 0;
 		GLchar message[1024];
 		glGetProgramInfoLog(programId, 1024, &log_length, message);
-		
-		// TODO: LOG
-		std::cout << message << "\n";
 
 		glDeleteProgram(programId);
-
-		hxAssert(false, message);
+		hxAssert(false);
 	}
 
 	glValidateProgram(programId);
 
 	return programId;
+}
+
+void APIENTRY GLDebugMessageCallback(GLenum source,
+	GLenum type,
+	GLuint id,
+	GLenum severity,
+	GLsizei length,
+	const GLchar* message,
+	const void* userParam)
+{
+	std::cout << message << "\n";
 }
